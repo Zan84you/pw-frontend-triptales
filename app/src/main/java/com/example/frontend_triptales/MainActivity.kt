@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.frontend_triptales
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -39,14 +39,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.myapplication.ui.theme.MyApplicationTheme
+import com.example.frontend_triptales.ui.theme.MyApplicationTheme
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
