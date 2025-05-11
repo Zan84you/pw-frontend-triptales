@@ -2,6 +2,16 @@ package com.example.frontend_triptales
 
 import com.google.android.gms.maps.model.LatLng
 
+data class LoginRequest(
+    val username: String,
+    val password: String
+)
+
+data class LoginResponse(
+    val token: String,
+    val userId: String
+)
+
 data class User(
     val id: String,
     val username: String,
@@ -11,8 +21,8 @@ data class User(
     val likesCount: Int = 0
 )
 
-data class Trip(
-    val id: String,
+data class TripGroup(
+    val id: Int,
     val name: String,
     val description: String,
     val creatorId: String,
@@ -21,11 +31,11 @@ data class Trip(
 )
 
 data class Post(
-    val id: String,
+    val id: Int,
     val userId: String,
     val username: String,
     val content: String,
-    val imageUrl: String? = null,
+    val image: String? = null,
     val location: LatLng? = null,
     val locationName: String? = null,
     val timestamp: Long,
@@ -34,16 +44,28 @@ data class Post(
 )
 
 data class Comment(
-    val id: String,
+    val id: Int,
     val userId: String,
     val username: String,
     val content: String,
     val timestamp: Long
 )
 
+data class Like(
+    val id: Int,
+    val user: Int,
+    val post: Int
+)
+
 data class Badge(
-    val id: String,
+    val id: Int,
     val name: String,
     val icon: String,
     val description: String
+)
+
+data class UserBadge(
+    val id: Int,
+    val user: Int,
+    val badge: Int,
 )
