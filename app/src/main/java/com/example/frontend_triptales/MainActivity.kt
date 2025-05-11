@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -129,7 +130,6 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     Box(
@@ -339,6 +339,7 @@ fun RegisterScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripsScreen(
     onTripSelected: (Trip) -> Unit,
@@ -493,6 +494,7 @@ fun TripCard(trip: Trip, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTripScreen(
     onTripCreated: () -> Unit,
@@ -944,6 +946,7 @@ fun MembersTab(trip: Trip) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePostScreen(
     onPostCreated: () -> Unit,
@@ -1081,6 +1084,7 @@ fun CreatePostScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
@@ -1281,6 +1285,7 @@ fun ProfileScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripDetailScreen(
     viewModel: TripTalesViewModel = viewModel(),
@@ -1363,368 +1368,6 @@ fun TripDetailScreen(
                     0 -> PostsTab(trip = trip)
                     1 -> MapTab(trip = trip)
                     2 -> MembersTab(trip = trip)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun PostsTab(trip: Trip, viewModel: TripTalesViewModel = viewModel()) {
-    if (trip.posts.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Nessun post. Aggiungi il primo post!",
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
-        ) {
-            items(trip.posts.sortedByDescending { it.timestamp }) { post ->
-                PostCard(post = post)
-            }
-        }
-    }
-}
-
-@Composable
-fun PostCard(post: Post, viewModel: TripTalesViewModel = viewModel()) {
-    val scope = rememberCoroutineScope()
-    var commentText by remember { mutableStateOf("") }
-    var showComments by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // User info
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = post.username.first().toString(),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = post.username,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                    if (post.locationName != null) {
-                        Text(
-                            text = post.locationName,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Post content
-            Text(text = post.content)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Post image if available
-            post.imageUrl?.let {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    // In a real app, use Coil or other image loading library
-                    Image(
-                        painter = rememberAsyncImagePainter(it),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            // Actions
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                viewModel.likePost(post.id)
-                                Toast.makeText(context, "Post apprezzato", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.ThumbUp,
-                            contentDescription = "Mi piace",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Text(text = post.likes.toString())
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    IconButton(onClick = { showComments = !showComments }) {
-                        Icon(
-                            Icons.Default.Comment,
-                            contentDescription = "Commenti",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Text(text = post.comments.size.toString())
-                }
-            }
-
-            // Comments section
-            if (showComments) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Divider()
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Commenti",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Comments list
-                if (post.comments.isNotEmpty()) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        post.comments.forEach { comment ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = comment.username.first().toString(),
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(
-                                        text = comment.username,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
-                                    Text(
-                                        text = comment.content,
-                                        fontSize = 14.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Text(
-                        text = "Nessun commento",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Add comment
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = commentText,
-                        onValueChange = { commentText = it },
-                        placeholder = { Text("Aggiungi un commento...") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    IconButton(
-                        onClick = {
-                            if (commentText.isNotEmpty()) {
-                                scope.launch {
-                                    viewModel.addComment(post.id, commentText)
-                                    commentText = ""
-                                }
-                            }
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.Send,
-                            contentDescription = "Invia",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MapTab(trip: Trip) {
-    val posts = trip.posts.filter { it.location != null }
-    var mapProperties by remember {
-        mutableStateOf(
-            MapProperties(
-                mapType = MapType.NORMAL,
-                isMyLocationEnabled = false
-            )
-        )
-    }
-    val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            mapProperties = mapProperties.copy(isMyLocationEnabled = isGranted)
-        }
-    )
-
-    // Request location permission
-    LaunchedEffect(Unit) {
-        when (PackageManager.PERMISSION_GRANTED) {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) -> {
-                mapProperties = mapProperties.copy(isMyLocationEnabled = true)
-            }
-            else -> {
-                launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (posts.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Nessun post con posizione",
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            val rome = LatLng(41.9028, 12.4964)
-            var cameraPositionState = rememberCameraPositionState {
-                position = CameraPosition.fromLatLngZoom(
-                    posts.firstOrNull()?.location ?: rome, 12f
-                )
-            }
-
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                properties = mapProperties
-            ) {
-                posts.forEach { post ->
-                    post.location?.let { location ->
-                        Marker(
-                            state = MarkerState(position = location),
-                            title = post.username,
-                            snippet = post.locationName ?: "Post"
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MembersTab(trip: Trip) {
-    // In a real app, this would fetch and display actual user profiles
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 16.dp)
-    ) {
-        items(trip.members.size) { index ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "U${index + 1}",
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = if (index == 0) "Marco (creatore)" else "Utente ${index + 1}",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Badge: ${if (index == 0) 1 else 0}",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
         }
