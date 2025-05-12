@@ -15,10 +15,10 @@ interface ApiService {
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
     @GET("groups/")
-    suspend fun getGroups(): Response<List<TripGroup>>
+    suspend fun getGroups(): Response<List<Trip>>
 
     @POST("groups/")
-    suspend fun createGroup(@Body group: TripGroup): Response<TripGroup>
+    suspend fun createGroup(@Body group: Trip): Response<Trip>
 
     // --- Post ---
     @GET("posts/")
@@ -60,6 +60,9 @@ interface ApiService {
 
     @GET("userbadges/")
     suspend fun getUserBadges(): Response<List<UserBadge>>
+
+    @POST("auth/register/")
+    suspend fun register(@Body request: RegisterRequest): Response<LoginResponse>
 }
 
 object ApiClient {

@@ -670,7 +670,7 @@ fun PostCard(post: Post, viewModel: TripTalesViewModel = viewModel()) {
             Spacer(modifier = Modifier.height(12.dp))
 
             // Post image if available
-            post.imageUrl?.let {
+            post.image?.let {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

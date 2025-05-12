@@ -21,7 +21,7 @@ data class User(
     val likesCount: Int = 0
 )
 
-data class TripGroup(
+data class Trip(
     val id: Int,
     val name: String,
     val description: String,
@@ -68,4 +68,10 @@ data class UserBadge(
     val id: Int,
     val user: Int,
     val badge: Int,
+)
+
+data class RegisterRequest(
+    val username: String,
+    val email: String,
+    val password: String
 )
