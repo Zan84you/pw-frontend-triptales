@@ -119,14 +119,13 @@ fun TripTalesApp(viewModel: TripTalesViewModel = viewModel()) {
         }
     }
 }
-
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
     viewModel: TripTalesViewModel = viewModel()
 ) {
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -162,10 +161,10 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Username") },
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -190,15 +189,14 @@ fun LoginScreen(
 
             Button(
                 onClick = {
-                    if (email.isEmpty() || password.isEmpty()) {
-                        errorMessage = "Inserisci email e password"
+                    errorMessage = null
+                    if (username.isEmpty() || password.isEmpty()) {
+                        errorMessage = "Inserisci username e password"
                         return@Button
                     }
                     isLoading = true
                     scope.launch {
-                        // Simulate network delay
-                        delay(1000)
-                        val success = viewModel.login(email, password)
+                        val success = viewModel.login(username, password)
                         isLoading = false
                         if (success) {
                             onLoginSuccess()
@@ -698,7 +696,7 @@ fun PostCard(post: Post, viewModel: TripTalesViewModel = viewModel()) {
                     IconButton(
                         onClick = {
                             scope.launch {
-                                viewModel.likePost(post.id)
+                                //viewModel.likePost(post.id)
                                 Toast.makeText(context, "Post apprezzato", Toast.LENGTH_SHORT).show()
                             }
                         }

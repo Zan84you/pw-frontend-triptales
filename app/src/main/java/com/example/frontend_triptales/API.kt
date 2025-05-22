@@ -1,5 +1,6 @@
 package com.example.frontend_triptales
 
+import okhttp3.Interceptor
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
@@ -11,8 +12,11 @@ import retrofit2.http.*
 
 interface ApiService {
 
-    @POST("auth/login/")
+    @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+
+    @GET("user/me/")
+    suspend fun getUserMe(): Response<User>
 
     @GET("groups/")
     suspend fun getGroups(): Response<List<Trip>>
@@ -65,26 +69,37 @@ interface ApiService {
     suspend fun register(@Body request: RegisterRequest): Response<LoginResponse>
 }
 
-object ApiClient {
-    private const val BASE_URL = "http://192.168.1.12:8000/" // Emulator loopback
+class AuthInterceptor(private val token: String) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
+        val newRequest = chain.request().newBuilder()
+            .addHeader("Authorization", "Bearer $token")
+            .build()
+        return chain.proceed(newRequest)
+    }
+}
 
-    private val retrofit: Retrofit by lazy {
+object ApiClient {
+    private const val BASE_URL = "http://192.168.1.12:8000/api/" // Emulator loopback
+
+    fun create(token: String? = null): ApiService{
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
-        val client = OkHttpClient.Builder()
+        val clientBuilder = OkHttpClient.Builder()
             .addInterceptor(logging)
-            .build()
 
-        Retrofit.Builder()
+        if(!token.isNullOrEmpty()){
+            clientBuilder.addInterceptor(AuthInterceptor(token))
+        }
+
+        val retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .client(client)
+            .client(clientBuilder.build())
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+
+        return retrofit.create(ApiService::class.java)
     }
 
-    val apiService: ApiService by lazy {
-        retrofit.create(ApiService::class.java)
-    }
 }

@@ -25,30 +25,34 @@ class TripTalesViewModel : ViewModel() {
 
     private val _token = MutableStateFlow<String?>(null)
 
+    // Ottiene un ApiService con token se disponibile
+    private fun getApiService(): ApiService {
+        return ApiClient.create(_token.value)
+    }
+
     suspend fun login(username: String, password: String): Boolean {
         return try {
-            val response = ApiClient.apiService.login(LoginRequest(username, password))
+            val response = ApiClient.create().login(LoginRequest(username, password))
             if (response.isSuccessful) {
-                response.body()?.let { body ->
-                    _token.value = body.token
+                val loginResponse = response.body()!!
+                _token.value = loginResponse.access
+                // Ora uso il token per recuperare user info
+                val userResponse = getApiService().getUserMe()
+                if (userResponse.isSuccessful && userResponse.body() != null) {
+                    _currentUser.value = userResponse.body()
                     _isLoggedIn.value = true
-                    _currentUser.value = User(
-                        id = body.userId,
-                        username = username,
-                        email = "" // recuperabile da API utente
-                    )
                     fetchGroups()
-                    return true
+                    true
+                } else {
+                    Log.e("Login", "Errore nel recupero utente")
+                    false
                 }
-                // Body was null
-                Log.e("Login", "Risposta senza body")
-                false
             } else {
-                Log.e("Login", "Errore ${response.code()}: ${response.message()}")
+                Log.e("Login", "Credenziali non valide")
                 false
             }
         } catch (e: Exception) {
-            Log.e("Login", "Eccezione: ${e.localizedMessage}")
+            Log.e("Login", "Errore rete: ${e.localizedMessage}")
             false
         }
     }
@@ -58,12 +62,13 @@ class TripTalesViewModel : ViewModel() {
         _currentUser.value = null
         _token.value = null
         _selectedTrip.value = null
+        _trips.value = emptyList()
     }
 
     fun fetchGroups() {
         viewModelScope.launch {
             try {
-                val response = ApiClient.apiService.getGroups()
+                val response = getApiService().getGroups()
                 if (response.isSuccessful) {
                     _trips.value = response.body() ?: emptyList()
                 } else {
@@ -85,15 +90,17 @@ class TripTalesViewModel : ViewModel() {
                 creatorId = creatorId
             )
 
-            val response = ApiClient.apiService.createGroup(newTrip)
+            val response = getApiService().createGroup(newTrip)
             if (response.isSuccessful) {
                 fetchGroups()
-                true  // Success
+                true
             } else {
-                false // Failure
+                Log.e("CreateTrip", "Errore ${response.code()}")
+                false
             }
         } catch (e: Exception) {
-            false   // Failure
+            Log.e("CreateTrip", "Errore rete: ${e.localizedMessage}")
+            false
         }
     }
 
@@ -112,7 +119,7 @@ class TripTalesViewModel : ViewModel() {
                     content = content,
                     timestamp = System.currentTimeMillis()
                 )
-                val response = ApiClient.apiService.addComment(newComment)
+                val response = getApiService().addComment(newComment)
                 if (response.isSuccessful) {
                     fetchGroups()
                 } else {
@@ -124,22 +131,22 @@ class TripTalesViewModel : ViewModel() {
         }
     }
 
-    fun likePost(postId: Int) {
-        viewModelScope.launch {
-            val user = _currentUser.value ?: return@launch
-            try {
-                val like = Like(id = 0, user = user.id.toInt(), post = postId)
-                val response = ApiClient.apiService.likePost(like)
-                if (response.isSuccessful) {
-                    fetchGroups()
-                } else {
-                    Log.e("LikePost", "Errore ${response.code()}")
-                }
-            } catch (e: Exception) {
-                Log.e("LikePost", "Errore rete: ${e.localizedMessage}")
-            }
-        }
-    }
+    //fun likePost(postId: Int) {
+    //    viewModelScope.launch {
+    //        val user = _currentUser.value ?: return@launch
+    //        try {
+    //            val like = Like(id = 0, user = user.id, post = postId)
+    //            val response = getApiService().likePost(like)
+    //            if (response.isSuccessful) {
+    //                fetchGroups()
+    //            } else {
+    //                Log.e("LikePost", "Errore ${response.code()}")
+    //            }
+    //        } catch (e: Exception) {
+    //            Log.e("LikePost", "Errore rete: ${e.localizedMessage}")
+    //        }
+    //    }
+    //}
 
     suspend fun addPost(
         content: String,
@@ -158,11 +165,12 @@ class TripTalesViewModel : ViewModel() {
             image = imageUrl,
             location = location,
             locationName = locationName,
-            timestamp = System.currentTimeMillis()
+            timestamp = System.currentTimeMillis(),
+            //group = trip.id
         )
 
         return try {
-            val response = ApiClient.apiService.addPost(newPost)
+            val response = getApiService().addPost(newPost)
             if (response.isSuccessful) {
                 fetchGroups()
                 true
@@ -178,30 +186,33 @@ class TripTalesViewModel : ViewModel() {
 
     suspend fun register(username: String, email: String, password: String): Boolean {
         return try {
-            val response = ApiClient.apiService.register(
+            val response = ApiClient.create().register(
                 RegisterRequest(username, email, password)
             )
             if (response.isSuccessful) {
-                response.body()?.let { loginResponse ->
-                    _token.value = loginResponse.token
+                val loginResponse = response.body()
+                if (loginResponse != null) {
+                    _token.value = loginResponse.access
                     _isLoggedIn.value = true
-                    _currentUser.value = User(
-                        id = loginResponse.userId,
-                        username = username,
-                        email = email
-                    )
-                    fetchGroups()
-                    return true
+                    // Ora recupera user info con token
+                    val userResponse = getApiService().getUserMe()
+                    if (userResponse.isSuccessful && userResponse.body() != null) {
+                        _currentUser.value = userResponse.body()
+                        fetchGroups()
+                        return true
+                    } else {
+                        Log.e("Register", "Errore nel recupero utente")
+                        return false
+                    }
                 }
-                // Null body
                 Log.e("Register", "Risposta senza body")
                 false
             } else {
-                Log.e("Register", "Error ${response.code()}: ${response.message()}")
+                Log.e("Register", "Errore ${response.code()}: ${response.message()}")
                 false
             }
         } catch (e: Exception) {
-            Log.e("Register", "Network error: ${e.localizedMessage}")
+            Log.e("Register", "Errore rete: ${e.localizedMessage}")
             false
         }
     }
