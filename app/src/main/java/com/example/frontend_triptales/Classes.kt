@@ -8,8 +8,8 @@ data class LoginRequest(
 )
 
 data class LoginResponse(
-    val access: String,
-    val refresh: String
+    val token: String,
+    val userId: String
 )
 
 data class User(
