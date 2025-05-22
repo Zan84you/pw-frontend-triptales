@@ -30,32 +30,35 @@ class TripTalesViewModel : ViewModel() {
         return ApiClient.create(_token.value)
     }
 
-    suspend fun login(username: String, password: String): Boolean {
+    suspend fun login(username: String, password: String): String? {
         return try {
             val response = ApiClient.create().login(LoginRequest(username, password))
+
             if (response.isSuccessful) {
                 val loginResponse = response.body()!!
+
                 _token.value = loginResponse.access
-                // Ora uso il token per recuperare user info
-                val userResponse = getApiService().getUserMe()
-                if (userResponse.isSuccessful && userResponse.body() != null) {
+
+                val apiServiceWithToken = ApiClient.create(_token.value)
+                val userResponse = apiServiceWithToken.getUserMe()
+
+                return if (userResponse.isSuccessful && userResponse.body() != null) {
                     _currentUser.value = userResponse.body()
                     _isLoggedIn.value = true
                     fetchGroups()
-                    true
+                    loginResponse.access // ritorna il token
                 } else {
-                    Log.e("Login", "Errore nel recupero utente")
-                    false
+                    null
                 }
             } else {
-                Log.e("Login", "Credenziali non valide")
-                false
+                null
             }
         } catch (e: Exception) {
-            Log.e("Login", "Errore rete: ${e.localizedMessage}")
-            false
+            null
         }
     }
+
+
 
     fun logout() {
         _isLoggedIn.value = false

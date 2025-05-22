@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -121,7 +122,7 @@ fun TripTalesApp(viewModel: TripTalesViewModel = viewModel()) {
 }
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (String) -> Unit,  // Passiamo il token alla schermata successiva
     onNavigateToRegister: () -> Unit,
     viewModel: TripTalesViewModel = viewModel()
 ) {
@@ -196,10 +197,10 @@ fun LoginScreen(
                     }
                     isLoading = true
                     scope.launch {
-                        val success = viewModel.login(username, password)
+                        val token = viewModel.login(username, password)
                         isLoading = false
-                        if (success) {
-                            onLoginSuccess()
+                        if (!token.isNullOrEmpty()) {
+                            onLoginSuccess(token)
                         } else {
                             errorMessage = "Credenziali non valide"
                         }
@@ -227,8 +228,18 @@ fun LoginScreen(
 }
 
 @Composable
+fun TokenScreen(token: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = "Token ricevuto:\n$token", textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit,
+    onRegisterSuccess: (String) -> Unit,  // Ora passa il token
     onNavigateToLogin: () -> Unit,
     viewModel: TripTalesViewModel = viewModel()
 ) {
@@ -307,10 +318,10 @@ fun RegisterScreen(
                     scope.launch {
                         // Simulate network delay
                         delay(1000)
-                        val success = viewModel.register(username, email, password)
+                        val token = viewModel.register(username, email, password)
                         isLoading = false
-                        if (success) {
-                            onRegisterSuccess()
+                        if (token != null) {
+                            onRegisterSuccess(token.toString())
                         } else {
                             errorMessage = "Errore durante la registrazione"
                         }

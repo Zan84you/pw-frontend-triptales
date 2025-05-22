@@ -12,7 +12,7 @@ import retrofit2.http.*
 
 interface ApiService {
 
-    @POST("auth/login")
+    @POST("login/")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
     @GET("user/me/")
@@ -79,7 +79,7 @@ class AuthInterceptor(private val token: String) : Interceptor {
 }
 
 object ApiClient {
-    private const val BASE_URL = "http://192.168.1.12:8000/api/" // Emulator loopback
+    private const val BASE_URL = "http://192.168.1.12:8000/api/"
 
     fun create(token: String? = null): ApiService{
         val logging = HttpLoggingInterceptor().apply {
