@@ -15,7 +15,7 @@ interface ApiService {
     @POST("login/")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
-    @GET("user/me/")
+    @GET("me/")
     suspend fun getUserMe(): Response<User>
 
     @GET("groups/")
@@ -65,7 +65,7 @@ interface ApiService {
     @GET("userbadges/")
     suspend fun getUserBadges(): Response<List<UserBadge>>
 
-    @POST("auth/register/")
+    @POST("register/")
     suspend fun register(@Body request: RegisterRequest): Response<LoginResponse>
 }
 
