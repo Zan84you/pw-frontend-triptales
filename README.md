@@ -60,9 +60,9 @@ Permettere agli utenti di:
 
 ## 📷 Screenshot dell'app
 
-| Login & Registrazione | Home |
+| Login & Registrazione | Home | New Event |
 |------------------------|------------------|
-| ![login](images/login.png) | ![home](images/home.png) |
+| ![login](images/login.png) | ![home](images/home.png) | ![newevent](newevent/home.png) |
 
 ---
 
