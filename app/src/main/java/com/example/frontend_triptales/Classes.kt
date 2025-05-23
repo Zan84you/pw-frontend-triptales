@@ -1,6 +1,27 @@
 package com.example.frontend_triptales
 
+import android.content.Context
 import com.google.android.gms.maps.model.LatLng
+
+object TokenManager {
+    private const val PREF_NAME = "triptales_prefs"
+    private const val TOKEN_KEY = "auth_token"
+
+    fun saveToken(context: Context, token: String) {
+        val sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        sharedPreferences.edit().putString(TOKEN_KEY, token).apply()
+    }
+
+    fun getToken(context: Context): String? {
+        val sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        return sharedPreferences.getString(TOKEN_KEY, null)
+    }
+
+    fun clearToken(context: Context) {
+        val sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        sharedPreferences.edit().remove(TOKEN_KEY).apply()
+    }
+}
 
 data class LoginRequest(
     val username: String,
@@ -31,8 +52,8 @@ data class Trip(
     val name: String,
     val description: String,
     val creatorId: String,
-    val members: List<String> = emptyList(),
-    val posts: List<Post> = emptyList()
+    val members: List<String>? = emptyList(),
+    val posts: List<Post>? = emptyList()
 )
 
 data class Post(

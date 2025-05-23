@@ -22,8 +22,8 @@ interface ApiService {
     @GET("me/")
     suspend fun getUserMe(): Response<User>
 
-    @GET("groups/")
-    suspend fun getGroups(): Response<List<Trip>>
+    @GET("groups/mine/")
+    suspend fun getMyGroups(): Response<List<Trip>>
 
     @POST("groups/")
     suspend fun createGroup(@Body group: CreateTripRequest): Response<Trip>

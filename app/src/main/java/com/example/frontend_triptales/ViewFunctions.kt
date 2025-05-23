@@ -1,6 +1,10 @@
 package com.example.frontend_triptales
 
+import android.app.Application
+import android.content.Context
 import android.util.Log
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
@@ -9,7 +13,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class TripTalesViewModel : ViewModel() {
+class TripTalesViewModel (application: Application) : AndroidViewModel(application) {
+
+    private val context = getApplication<Application>().applicationContext
 
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
@@ -30,17 +36,19 @@ class TripTalesViewModel : ViewModel() {
         return ApiClient.create(_token.value)
     }
 
-    suspend fun login(username: String, password: String): String? {
+    suspend fun login(username: String, password: String, context: Context): String? {
         return try {
             val response = ApiClient.create().login(LoginRequest(username, password))
 
             if (response.isSuccessful) {
                 val loginResponse = response.body()!!
-
-                _token.value = loginResponse.access
+                val token = loginResponse.access
+                _token.value = token
                 Log.d("LoginToken", "Token ricevuto: ${loginResponse.access}")
+                if(_token.value != null)
+                    TokenManager.saveToken(context, token)
                 Log.d("TokenSaved", "Toke salvato ${_token.value}")
-                val apiServiceWithToken = ApiClient.create(_token.value)
+                val apiServiceWithToken = ApiClient.create(token)
                 val userResponse = apiServiceWithToken.getUserMe()
 
                 return if (userResponse.isSuccessful && userResponse.body() != null) {
@@ -72,22 +80,33 @@ class TripTalesViewModel : ViewModel() {
     fun fetchGroups() {
         viewModelScope.launch {
             try {
-                val response = getApiService().getGroups()
-                if (response.isSuccessful) {
-                    _trips.value = response.body() ?: emptyList()
-                } else {
-                    Log.e("Groups", "Errore ${response.code()}")
+                val token = TokenManager.getToken(context)
+                if (token == null) {
+                    Log.e("FetchGroups", "Token non trovato")
+                    return@launch
                 }
+
+                val response = ApiClient.create(token).getMyGroups()
+                if (response.isSuccessful) {
+                    val tripsList = response.body() ?: emptyList()
+                    Log.d("FetchGroups", "Ricevute ${tripsList.size} gite")
+                    tripsList.forEach {
+                        Log.d("Trip", "Nome: ${it.name}, Descrizione: ${it.description}")
+                    }
+                    _trips.value = tripsList
+                }
+
             } catch (e: Exception) {
-                Log.e("Groups", "Errore di rete: ${e.localizedMessage}")
+                Log.e("FetchGroups", "Errore di rete: ${e.localizedMessage}")
             }
         }
     }
 
-    suspend fun createTrip(name: String, description: String): Boolean {
+
+    suspend fun createTrip(name: String, description: String, context: Context): Boolean {
         return try {
             val newTrip = CreateTripRequest(name, description)
-            val token = _token.value
+            val token = TokenManager.getToken(context)
             Log.d("CreateTrip", "Token utilizzato ${token}")
             val response = ApiClient.create(token).createGroup(newTrip)
             if (response.isSuccessful) {

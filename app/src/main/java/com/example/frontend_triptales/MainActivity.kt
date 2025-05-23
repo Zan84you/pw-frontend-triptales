@@ -1,10 +1,10 @@
 package com.example.frontend_triptales
 
 import android.Manifest
+import android.app.Application
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,9 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -61,7 +65,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TripTalesApp(viewModel: TripTalesViewModel = viewModel()) {
+fun TripTalesApp() {
+    val context = LocalContext.current
+    val viewModel: TripTalesViewModel = viewModel(
+        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
+    )
     val isLoggedIn by viewModel.isLoggedIn.collectAsState()
     val navController = rememberNavController()
 
@@ -104,22 +112,25 @@ fun TripTalesApp(viewModel: TripTalesViewModel = viewModel()) {
             }
             composable("trip_detail") {
                 TripDetailScreen(
-                    onAddPost = { navController.navigate("create_post") },
+                    viewModel = viewModel,
+                    navController = navController,
                     onBack = { navController.popBackStack() }
-                )
-            }
-            composable("create_post") {
-                CreatePostScreen(
-                    onPostCreated = { navController.popBackStack() },
-                    onCancel = { navController.popBackStack() }
                 )
             }
             composable("profile") {
                 ProfileScreen(onBack = { navController.popBackStack() })
             }
+            composable("create_post") {
+                CreatePostScreen(
+                    onPostCreated = { navController.popBackStack() },
+                    onCancel = { navController.popBackStack() },
+                    viewModel = viewModel
+                )
+            }
         }
     }
 }
+
 @Composable
 fun LoginScreen(
     onLoginSuccess: (String) -> Unit,  // Passiamo il token alla schermata successiva
@@ -128,6 +139,7 @@ fun LoginScreen(
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var context = LocalContext.current
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -197,7 +209,7 @@ fun LoginScreen(
                     }
                     isLoading = true
                     scope.launch {
-                        val token = viewModel.login(username, password)
+                        val token = viewModel.login(username, password, context)
                         isLoading = false
                         if (!token.isNullOrEmpty()) {
                             onLoginSuccess(token)
@@ -337,15 +349,22 @@ fun RegisterScreen(
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripsScreen(
     onTripSelected: (Trip) -> Unit,
     onCreateTrip: () -> Unit,
     onLogout: () -> Unit,
-    viewModel: TripTalesViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val viewModel: TripTalesViewModel = viewModel(
+        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
+    )
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchGroups()
+    }
+
     val trips by viewModel.trips.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
 
@@ -354,7 +373,7 @@ fun TripsScreen(
             TopAppBar(
                 title = { Text("Le tue gite") },
                 actions = {
-                    IconButton(onClick = { onLogout() }) {
+                    IconButton(onClick = onLogout) {
                         Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
                     }
                 }
@@ -436,7 +455,6 @@ fun TripsScreen(
         }
     }
 }
-
 @Composable
 fun TripCard(trip: Trip, onClick: () -> Unit) {
     Card(
@@ -471,7 +489,7 @@ fun TripCard(trip: Trip, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "${trip.members.size} partecipanti",
+                    text = "${trip.members?.size} partecipanti",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -484,7 +502,7 @@ fun TripCard(trip: Trip, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "${trip.posts.size} post",
+                    text = "${trip.posts?.size} post",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -556,7 +574,7 @@ fun CreateTripScreen(
                     isLoading = true
                     scope.launch {
                         delay(800)
-                        val success = viewModel.createTrip(name, description)
+                        val success = viewModel.createTrip(name, description, context)
                         isLoading = false
                         if (success) {
                             Toast.makeText(context, "Gita creata con successo", Toast.LENGTH_SHORT).show()
@@ -585,7 +603,7 @@ fun CreateTripScreen(
 
 @Composable
 fun PostsTab(trip: Trip, viewModel: TripTalesViewModel = viewModel()) {
-    if (trip.posts.isEmpty()) {
+    if (trip.posts?.isEmpty() == true) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -606,8 +624,10 @@ fun PostsTab(trip: Trip, viewModel: TripTalesViewModel = viewModel()) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            items(trip.posts.sortedByDescending { it.timestamp }) { post ->
-                PostCard(post = post)
+            trip.posts?.let {
+                items(it.sortedByDescending { it.timestamp }) { post ->
+                    PostCard(post = post)
+                }
             }
         }
     }
@@ -821,7 +841,7 @@ fun PostCard(post: Post, viewModel: TripTalesViewModel = viewModel()) {
 
 @Composable
 fun MapTab(trip: Trip) {
-    val posts = trip.posts.filter { it.location != null }
+    val posts = trip.posts?.filter { it.location != null }
     var mapProperties by remember {
         mutableStateOf(
             MapProperties(
@@ -854,37 +874,39 @@ fun MapTab(trip: Trip) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (posts.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Nessun post con posizione",
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            val rome = LatLng(41.9028, 12.4964)
-            var cameraPositionState = rememberCameraPositionState {
-                position = CameraPosition.fromLatLngZoom(
-                    posts.firstOrNull()?.location ?: rome, 12f
-                )
-            }
+        if (posts != null) {
+            if (posts.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Nessun post con posizione",
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                val rome = LatLng(41.9028, 12.4964)
+                var cameraPositionState = rememberCameraPositionState {
+                    position = CameraPosition.fromLatLngZoom(
+                        posts.firstOrNull()?.location ?: rome, 12f
+                    )
+                }
 
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                properties = mapProperties
-            ) {
-                posts.forEach { post ->
-                    post.location?.let { location ->
-                        Marker(
-                            state = MarkerState(position = location),
-                            title = post.username,
-                            snippet = post.locationName ?: "Post"
-                        )
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState,
+                    properties = mapProperties
+                ) {
+                    posts.forEach { post ->
+                        post.location?.let { location ->
+                            Marker(
+                                state = MarkerState(position = location),
+                                title = post.username,
+                                snippet = post.locationName ?: "Post"
+                            )
+                        }
                     }
                 }
             }
@@ -901,50 +923,51 @@ fun MembersTab(trip: Trip) {
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(vertical = 16.dp)
     ) {
-        items(trip.members.size) { index ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
+        trip.members?.let {
+            items(it.size) { index ->
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "U${index + 1}",
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = if (index == 0) "Marco (creatore)" else "Utente ${index + 1}",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Badge: ${if (index == 0) 1 else 0}",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "U${index + 1}",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = if (index == 0) "Marco (creatore)" else "Utente ${index + 1}",
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Badge: ${if (index == 0) 1 else 0}",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePostScreen(
@@ -1041,15 +1064,9 @@ fun CreatePostScreen(
 
                     isLoading = true
                     scope.launch {
-                        // In real app, upload image and get URL
                         val imageUrl = if (imageUri != null) "https://example.com/image.jpg" else null
+                        val location = if (locationName.isNotEmpty()) LatLng(41.9028, 12.4964) else null
 
-                        // Simulate getting location for post
-                        val location = if (locationName.isNotEmpty()) {
-                            LatLng(41.9028, 12.4964) // Rome as example
-                        } else null
-
-                        delay(800)
                         val success = viewModel.addPost(
                             content,
                             imageUrl,
@@ -1283,12 +1300,11 @@ fun ProfileScreen(
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripDetailScreen(
     viewModel: TripTalesViewModel = viewModel(),
-    onAddPost: () -> Unit,
+    navController: NavController,
     onBack: () -> Unit
 ) {
     val selectedTrip by viewModel.selectedTrip.collectAsState()
@@ -1305,7 +1321,9 @@ fun TripDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onAddPost) {
+                    IconButton(onClick = {
+                        navController.navigate("create_post")
+                    }) {
                         Icon(Icons.Default.Add, contentDescription = "Aggiungi post")
                     }
                 }
@@ -1318,56 +1336,8 @@ fun TripDetailScreen(
                 .padding(innerPadding)
         ) {
             selectedTrip?.let { trip ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = trip.description,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Group,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "${trip.members.size} partecipanti",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                // Tabs
-                TabRow(selectedTabIndex = selectedTabIndex) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(title) }
-                        )
-                    }
-                }
-
-                when (selectedTabIndex) {
-                    0 -> PostsTab(trip = trip)
-                    1 -> MapTab(trip = trip)
-                    2 -> MembersTab(trip = trip)
-                }
+                // Mostra dettaglio trip e tabs
+                // Qui puoi mostrare i post, la mappa, o i membri
             }
         }
     }
