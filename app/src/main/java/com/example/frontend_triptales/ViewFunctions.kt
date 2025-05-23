@@ -196,12 +196,12 @@ class TripTalesViewModel : ViewModel() {
                 val loginResponse = response.body()
                 if (loginResponse != null) {
                     _token.value = loginResponse.access
-                    _isLoggedIn.value = true
-                    // Ora recupera user info con token
-                    val userResponse = getApiService().getUserMe()
+                    val apiServiceWithToken = ApiClient.create(_token.value)
+                    val userResponse = apiServiceWithToken.getUserMe()
                     if (userResponse.isSuccessful && userResponse.body() != null) {
                         _currentUser.value = userResponse.body()
                         fetchGroups()
+                        _isLoggedIn.value = true
                         return true
                     } else {
                         Log.e("Register", "Errore nel recupero utente")
