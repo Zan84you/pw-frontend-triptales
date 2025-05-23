@@ -62,7 +62,7 @@ Permettere agli utenti di:
 
 | Login & Registrazione | Home | New Event |
 |--------------------|------------------|--------------------|
-| ![login](images/login.png) | ![home](images/home.png) | ![newevent](images/newevent.png) |
+| ![login](images/login.png) | ![home](images/home.png) | ![newevent](images/newpost.png) |
 
 ---
 
