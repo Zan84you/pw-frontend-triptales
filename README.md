@@ -58,6 +58,14 @@ Permettere agli utenti di:
 
 ---
 
+## 📷 Screenshot dell'app
+
+| Login & Registrazione | Home |
+|------------------------|------------------|
+| ![login](images/login.png) | ![home](images/home.png) |
+
+---
+
 ## 🧪 Come installare ed eseguire l'app
 
 ### ✅ Prerequisiti
