@@ -228,16 +228,6 @@ fun LoginScreen(
 }
 
 @Composable
-fun TokenScreen(token: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = "Token ricevuto:\n$token", textAlign = TextAlign.Center)
-    }
-}
-
-@Composable
 fun RegisterScreen(
     onRegisterSuccess: (String) -> Unit,  // Ora passa il token
     onNavigateToLogin: () -> Unit,

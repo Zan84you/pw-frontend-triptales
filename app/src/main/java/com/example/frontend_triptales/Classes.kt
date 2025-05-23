@@ -21,6 +21,11 @@ data class User(
     val likesCount: Int = 0
 )
 
+data class CreateTripRequest(
+    val name: String,
+    val description: String
+)
+
 data class Trip(
     val id: Int,
     val name: String,

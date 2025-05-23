@@ -12,6 +12,9 @@ import retrofit2.http.*
 
 interface ApiService {
 
+    @POST("register/")
+    suspend fun register(@Body request: RegisterRequest): Response<LoginResponse>
+
     @POST("login/")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
@@ -22,7 +25,7 @@ interface ApiService {
     suspend fun getGroups(): Response<List<Trip>>
 
     @POST("groups/")
-    suspend fun createGroup(@Body group: Trip): Response<Trip>
+    suspend fun createGroup(@Body group: CreateTripRequest): Response<Trip>
 
     // --- Post ---
     @GET("posts/")
@@ -65,8 +68,7 @@ interface ApiService {
     @GET("userbadges/")
     suspend fun getUserBadges(): Response<List<UserBadge>>
 
-    @POST("register/")
-    suspend fun register(@Body request: RegisterRequest): Response<LoginResponse>
+
 }
 
 class AuthInterceptor(private val token: String) : Interceptor {

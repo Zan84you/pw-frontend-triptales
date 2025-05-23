@@ -85,15 +85,9 @@ class TripTalesViewModel : ViewModel() {
 
     suspend fun createTrip(name: String, description: String): Boolean {
         return try {
-            val creatorId = currentUser.value?.id ?: return false
-            val newTrip = Trip(
-                id = 0,
-                name = name,
-                description = description,
-                creatorId = creatorId
-            )
-
-            val response = getApiService().createGroup(newTrip)
+            val newTrip = CreateTripRequest(name, description)
+            val token = _token.value
+            val response = ApiClient.create(token).createGroup(newTrip)
             if (response.isSuccessful) {
                 fetchGroups()
                 true
