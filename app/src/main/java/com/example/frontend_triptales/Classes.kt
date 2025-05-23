@@ -1,7 +1,8 @@
 package com.example.frontend_triptales
 
 import android.content.Context
-import com.google.android.gms.maps.model.LatLng
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody
 
 object TokenManager {
     private const val PREF_NAME = "triptales_prefs"
@@ -56,17 +57,27 @@ data class Trip(
     val posts: List<Post>? = emptyList()
 )
 
+data class PostRequest(
+    val group: Int,
+    val title: String,
+    val content: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null
+)
+
 data class Post(
-    val id: Int,
+    val id: String,
     val userId: String,
     val username: String,
+    val title: String,
     val content: String,
-    val image: String? = null,
-    val location: LatLng? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val locationName: String? = null,
     val timestamp: Long,
     val likes: Int = 0,
-    val comments: List<Comment> = emptyList()
+    val comments: List<Comment> = emptyList(),
+    val group: Int
 )
 
 data class Comment(

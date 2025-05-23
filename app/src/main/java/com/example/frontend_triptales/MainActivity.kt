@@ -1,16 +1,12 @@
 package com.example.frontend_triptales
 
-import android.Manifest
 import android.app.Application
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,11 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -37,7 +31,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavController
@@ -46,9 +39,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.frontend_triptales.ui.theme.MyApplicationTheme
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -81,50 +71,80 @@ fun TripTalesApp() {
         ) {
             composable("login") {
                 LoginScreen(
-                    onLoginSuccess = { navController.navigate("trips") { popUpTo("login") { inclusive = true } } },
-                    onNavigateToRegister = { navController.navigate("register") }
+                    onLoginSuccess = {
+                        navController.navigate("trips") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate("register")
+                    }
                 )
             }
             composable("register") {
                 RegisterScreen(
-                    onRegisterSuccess = { navController.navigate("trips") { popUpTo("register") { inclusive = true } } },
-                    onNavigateToLogin = { navController.popBackStack() }
+                    onRegisterSuccess = {
+                        navController.navigate("trips") {
+                            popUpTo("register") { inclusive = true }
+                        }
+                    },
+                    onNavigateToLogin = {
+                        navController.popBackStack()
+                    }
                 )
             }
             composable("trips") {
                 TripsScreen(
                     onTripSelected = { trip ->
-                        viewModel.selectTrip(trip)
+                        viewModel.selectTrip(trip) // seleziono il trip prima di navigare
                         navController.navigate("trip_detail")
                     },
-                    onCreateTrip = { navController.navigate("create_trip") },
+                    onCreateTrip = {
+                        navController.navigate("create_trip")
+                    },
                     onLogout = {
                         viewModel.logout()
-                        navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 )
             }
             composable("create_trip") {
                 CreateTripScreen(
-                    onTripCreated = { navController.popBackStack() },
-                    onCancel = { navController.popBackStack() }
+                    onTripCreated = {
+                        navController.popBackStack()
+                    },
+                    onCancel = {
+                        navController.popBackStack()
+                    }
                 )
             }
             composable("trip_detail") {
                 TripDetailScreen(
                     viewModel = viewModel,
                     navController = navController,
-                    onBack = { navController.popBackStack() }
+                    onBack = {
+                        navController.popBackStack()
+                    }
                 )
             }
             composable("profile") {
-                ProfileScreen(onBack = { navController.popBackStack() })
+                ProfileScreen(
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
             }
             composable("create_post") {
                 CreatePostScreen(
-                    onPostCreated = { navController.popBackStack() },
-                    onCancel = { navController.popBackStack() },
-                    viewModel = viewModel
+                    onPostCreated = {
+                        navController.popBackStack()
+                    },
+                    onCancel = {
+                        navController.popBackStack()
+                    },
+                    viewModel = viewModel // sempre passare il viewModel per accedere al trip selezionato
                 )
             }
         }
@@ -139,7 +159,7 @@ fun LoginScreen(
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var context = LocalContext.current
+    val context = LocalContext.current
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -322,7 +342,7 @@ fun RegisterScreen(
                         delay(1000)
                         val token = viewModel.register(username, email, password)
                         isLoading = false
-                        if (token != null) {
+                        if (token) {
                             onRegisterSuccess(token.toString())
                         } else {
                             errorMessage = "Errore durante la registrazione"
@@ -574,7 +594,7 @@ fun CreateTripScreen(
                     isLoading = true
                     scope.launch {
                         delay(800)
-                        val success = viewModel.createTrip(name, description, context)
+                        val success = viewModel.createTrip(name, description)
                         isLoading = false
                         if (success) {
                             Toast.makeText(context, "Gita creata con successo", Toast.LENGTH_SHORT).show()
@@ -689,24 +709,24 @@ fun PostCard(post: Post, viewModel: TripTalesViewModel = viewModel()) {
             Spacer(modifier = Modifier.height(12.dp))
 
             // Post image if available
-            post.image?.let {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    // In a real app, use Coil or other image loading library
-                    Image(
-                        painter = rememberAsyncImagePainter(it),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
+            //post.image?.let {
+            //    Box(
+            //        modifier = Modifier
+            //            .fillMaxWidth()
+            //            .height(200.dp)
+            //            .clip(RoundedCornerShape(8.dp))
+            //            .background(MaterialTheme.colorScheme.surfaceVariant)
+            //    ) {
+            //        // In a real app, use Coil or other image loading library
+            //        Image(
+            //            painter = rememberAsyncImagePainter(it),
+            //            contentDescription = null,
+            //            modifier = Modifier.fillMaxSize(),
+            //            contentScale = ContentScale.Crop
+            //        )
+            //    }
+            //    Spacer(modifier = Modifier.height(12.dp))
+            //}
 
             // Actions
             Row(
@@ -839,80 +859,80 @@ fun PostCard(post: Post, viewModel: TripTalesViewModel = viewModel()) {
     }
 }
 
-@Composable
-fun MapTab(trip: Trip) {
-    val posts = trip.posts?.filter { it.location != null }
-    var mapProperties by remember {
-        mutableStateOf(
-            MapProperties(
-                mapType = MapType.NORMAL,
-                isMyLocationEnabled = false
-            )
-        )
-    }
-    val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            mapProperties = mapProperties.copy(isMyLocationEnabled = isGranted)
-        }
-    )
-
-    // Request location permission
-    LaunchedEffect(Unit) {
-        when (PackageManager.PERMISSION_GRANTED) {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) -> {
-                mapProperties = mapProperties.copy(isMyLocationEnabled = true)
-            }
-            else -> {
-                launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (posts != null) {
-            if (posts.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Nessun post con posizione",
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                val rome = LatLng(41.9028, 12.4964)
-                var cameraPositionState = rememberCameraPositionState {
-                    position = CameraPosition.fromLatLngZoom(
-                        posts.firstOrNull()?.location ?: rome, 12f
-                    )
-                }
-
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState,
-                    properties = mapProperties
-                ) {
-                    posts.forEach { post ->
-                        post.location?.let { location ->
-                            Marker(
-                                state = MarkerState(position = location),
-                                title = post.username,
-                                snippet = post.locationName ?: "Post"
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+//@Composable
+//fun MapTab(trip: Trip) {
+//    val posts = trip.posts?.filter { it.location != null }
+//    var mapProperties by remember {
+//        mutableStateOf(
+//            MapProperties(
+//                mapType = MapType.NORMAL,
+//                isMyLocationEnabled = false
+//            )
+//        )
+//    }
+//    val context = LocalContext.current
+//    val launcher = rememberLauncherForActivityResult(
+//        contract = ActivityResultContracts.RequestPermission(),
+//        onResult = { isGranted ->
+//            mapProperties = mapProperties.copy(isMyLocationEnabled = isGranted)
+//        }
+//    )
+//
+//    // Request location permission
+//    LaunchedEffect(Unit) {
+//        when (PackageManager.PERMISSION_GRANTED) {
+//            ContextCompat.checkSelfPermission(
+//                context,
+//                Manifest.permission.ACCESS_FINE_LOCATION
+//            ) -> {
+//                mapProperties = mapProperties.copy(isMyLocationEnabled = true)
+//            }
+//            else -> {
+//                launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+//            }
+//        }
+//    }
+//
+//    Box(modifier = Modifier.fillMaxSize()) {
+//        if (posts != null) {
+//            if (posts.isEmpty()) {
+//                Box(
+//                    modifier = Modifier.fillMaxSize(),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    Text(
+//                        text = "Nessun post con posizione",
+//                        textAlign = TextAlign.Center,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                }
+//            } else {
+//                val rome = LatLng(41.9028, 12.4964)
+//                var cameraPositionState = rememberCameraPositionState {
+//                    position = CameraPosition.fromLatLngZoom(
+//                        posts.firstOrNull()?.location ?: rome, 12f
+//                    )
+//                }
+//
+//                GoogleMap(
+//                    modifier = Modifier.fillMaxSize(),
+//                    cameraPositionState = cameraPositionState,
+//                    properties = mapProperties
+//                ) {
+//                    posts.forEach { post ->
+//                        post.location?.let { location ->
+//                            Marker(
+//                                state = MarkerState(position = location),
+//                                title = post.username,
+//                                snippet = post.locationName ?: "Post"
+//                            )
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
 
 @Composable
 fun MembersTab(trip: Trip) {
@@ -975,17 +995,31 @@ fun CreatePostScreen(
     onCancel: () -> Unit,
     viewModel: TripTalesViewModel = viewModel()
 ) {
+    var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
     var locationName by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        imageUri = uri
+    val trip = viewModel.selectedTrip.collectAsState().value
+
+    LaunchedEffect(trip) {
+        Log.d("CreatePostScreen", "Trip selezionato: $trip")
+    }
+
+    if (trip == null) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Errore: nessuna gita selezionata.")
+            Button(onClick = onCancel) {
+                Text("Torna indietro")
+            }
+        }
+        return
     }
 
     Scaffold(
@@ -1010,6 +1044,14 @@ fun CreatePostScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Titolo") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
                 value = content,
                 onValueChange = { content = it },
                 label = { Text("Cosa vuoi condividere?") },
@@ -1028,58 +1070,61 @@ fun CreatePostScreen(
                 singleLine = true
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = { launcher.launch("image/*") },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Icon(Icons.Default.Image, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Foto")
-                }
-
-                if (imageUri != null) {
-                    Text(
-                        text = "Immagine selezionata",
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
-                    if (content.isEmpty()) {
-                        Toast.makeText(context, "Inserisci un contenuto", Toast.LENGTH_SHORT).show()
+                    if (title.isEmpty() || content.isEmpty()) {
+                        Toast.makeText(
+                            context,
+                            "Titolo e contenuto sono obbligatori",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return@Button
                     }
 
                     isLoading = true
                     scope.launch {
-                        val imageUrl = if (imageUri != null) "https://example.com/image.jpg" else null
-                        val location = if (locationName.isNotEmpty()) LatLng(41.9028, 12.4964) else null
+                        val latitude = if (locationName.isNotEmpty()) 41.9028 else null
+                        val longitude = if (locationName.isNotEmpty()) 12.4964 else null
 
-                        val success = viewModel.addPost(
-                            content,
-                            imageUrl,
-                            location,
-                            if (locationName.isEmpty()) null else locationName
+                        Log.d(
+                            "CreatePostScreen",
+                            "Creazione post. Titolo=$title, Content=$content, TripId=${trip.id}"
                         )
 
-                        isLoading = false
-                        if (success) {
-                            Toast.makeText(context, "Post creato con successo", Toast.LENGTH_SHORT).show()
+                        val success = try {
+                            viewModel.addPost(
+                                title = title,
+                                content = content,
+                                latitude = latitude,
+                                longitude = longitude,
+                                groupId = trip.id
+                            )
+                        } catch (e: Exception) {
+                            Log.e("CreatePostScreen", "Errore nella creazione del post", e)
+                            Toast.makeText(
+                                context,
+                                "Errore nella creazione del post: ${e.localizedMessage}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            false
+                        } finally {
+                            isLoading = false
+                        }
+
+                        if (success as Boolean) {
+                            Log.d("CreatePostScreen", "Post creato con successo")
+                            Toast.makeText(context, "Post creato con successo", Toast.LENGTH_SHORT)
+                                .show()
                             onPostCreated()
                         } else {
-                            Toast.makeText(context, "Errore nella creazione del post", Toast.LENGTH_SHORT).show()
+                            Log.e("CreatePostScreen", "Errore nella creazione del post")
+                            Toast.makeText(
+                                context,
+                                "Errore nella creazione del post",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 },
@@ -1099,6 +1144,9 @@ fun CreatePostScreen(
         }
     }
 }
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1322,7 +1370,11 @@ fun TripDetailScreen(
                 },
                 actions = {
                     IconButton(onClick = {
-                        navController.navigate("create_post")
+                        if (selectedTrip != null) {
+                            navController.navigate("create_post")
+                        } else {
+                            Log.e("TripDetailScreen", "Nessuna gita selezionata")
+                        }
                     }) {
                         Icon(Icons.Default.Add, contentDescription = "Aggiungi post")
                     }
@@ -1336,8 +1388,9 @@ fun TripDetailScreen(
                 .padding(innerPadding)
         ) {
             selectedTrip?.let { trip ->
-                // Mostra dettaglio trip e tabs
-                // Qui puoi mostrare i post, la mappa, o i membri
+                // Mostra i dettagli del trip e i tabs
+            } ?: run {
+                Text("Seleziona una gita per continuare", modifier = Modifier.padding(16.dp))
             }
         }
     }

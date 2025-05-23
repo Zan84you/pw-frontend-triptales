@@ -34,19 +34,16 @@ interface ApiService {
 
     @Multipart
     @POST("posts/")
-    suspend fun createPostWithImage(
-        @Part image: MultipartBody.Part,
+    suspend fun addPost(
+        @Part("title") title: RequestBody,
         @Part("content") content: RequestBody,
-        @Part("userId") userId: RequestBody,
-        @Part("username") username: RequestBody,
-        @Part("timestamp") timestamp: RequestBody,
+        @Part("latitude") latitude: RequestBody,
+        @Part("longitude") longitude : RequestBody,
         @Part("group") groupId: RequestBody,
-        @Part("locationName") locationName: RequestBody,
-        @Part("location") location: RequestBody
     ): Response<Post>
 
-    @POST("posts/")
-    suspend fun addPost(@Body post: Post): Response<Post>
+    //@POST("posts/")
+    //suspend fun addPost(@Body post: PostRequest): Response<Post>
 
     // --- Commenti ---
     @GET("comments/")
