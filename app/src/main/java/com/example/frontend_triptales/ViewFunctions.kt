@@ -38,7 +38,8 @@ class TripTalesViewModel : ViewModel() {
                 val loginResponse = response.body()!!
 
                 _token.value = loginResponse.access
-
+                Log.d("LoginToken", "Token ricevuto: ${loginResponse.access}")
+                Log.d("TokenSaved", "Toke salvato ${_token.value}")
                 val apiServiceWithToken = ApiClient.create(_token.value)
                 val userResponse = apiServiceWithToken.getUserMe()
 
@@ -87,6 +88,7 @@ class TripTalesViewModel : ViewModel() {
         return try {
             val newTrip = CreateTripRequest(name, description)
             val token = _token.value
+            Log.d("CreateTrip", "Token utilizzato ${token}")
             val response = ApiClient.create(token).createGroup(newTrip)
             if (response.isSuccessful) {
                 fetchGroups()

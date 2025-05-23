@@ -1,5 +1,6 @@
 package com.example.frontend_triptales
 
+import android.util.Log
 import okhttp3.Interceptor
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -76,6 +77,8 @@ class AuthInterceptor(private val token: String) : Interceptor {
         val newRequest = chain.request().newBuilder()
             .addHeader("Authorization", "Bearer $token")
             .build()
+        Log.d("AuthInterceptor", "Aggiunto header Authorization con token: Bearer $token")
+
         return chain.proceed(newRequest)
     }
 }
