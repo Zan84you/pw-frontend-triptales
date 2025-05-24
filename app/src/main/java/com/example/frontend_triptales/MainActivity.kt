@@ -1388,7 +1388,28 @@ fun TripDetailScreen(
                 .padding(innerPadding)
         ) {
             selectedTrip?.let { trip ->
-                // Mostra i dettagli del trip e i tabs
+                // Tab layout
+                TabRow(selectedTabIndex) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = { Text(title) }
+                        )
+                    }
+                }
+
+                // Tab content
+                when (selectedTabIndex) {
+                    0 -> PostsTab(trip = trip, viewModel = viewModel)
+                    1 -> Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Mappa (da implementare)")
+                    }
+                    2 -> MembersTab(trip = trip)
+                }
             } ?: run {
                 Text("Seleziona una gita per continuare", modifier = Modifier.padding(16.dp))
             }
