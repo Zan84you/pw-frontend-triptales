@@ -18,50 +18,47 @@ import java.net.SocketException
 
 class TripTalesViewModel(application: Application) : AndroidViewModel(application) {
     // Stati
-    private val context = getApplication<Application>().applicationContext
     private val _isLoggedIn = MutableStateFlow(false)
     private val _currentUser = MutableStateFlow<User?>(null)
     private val _trips = MutableStateFlow<List<Trip>>(emptyList())
     private val _selectedTrip = MutableStateFlow<Trip?>(null)
     private val _token = MutableStateFlow<String?>(null)
     private val _postResult = MutableStateFlow<PostResult?>(null)
+    private val _posts = MutableStateFlow<List<Post>>(emptyList())
+    private val _members = MutableStateFlow<List<User>>(emptyList())
 
     // Flussi pubblici
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
     val trips: StateFlow<List<Trip>> = _trips.asStateFlow()
     val selectedTrip: StateFlow<Trip?> = _selectedTrip.asStateFlow()
-    val postResult: StateFlow<PostResult?> = _postResult.asStateFlow()
+    val posts: StateFlow<List<Post>> = _posts.asStateFlow()
+    val members: StateFlow<List<User>> = _members.asStateFlow()
 
-    // Repository
-    private val postRepository = PostRepository(
-        apiService = ApiClient.create(),
-        context = context
-    )
+    // Dipendenze
+    private val context = getApplication<Application>().applicationContext
+    private val apiService: ApiService get() = ApiClient.create(_token.value)
+    private val postRepository = PostRepository(apiService, context)
 
-    // Ottiene un ApiService con token
-    private fun getApiService(): ApiService {
-        return ApiClient.create(_token.value)
-    }
-
-    // Login
-    suspend fun login(username: String, password: String, context: Context): String? {
+    // Metodi di autenticazione
+    suspend fun login(username: String, password: String): String? {
         return try {
             val response = ApiClient.create().login(LoginRequest(username, password))
 
             if (response.isSuccessful) {
-                val loginResponse = response.body()!!
-                _token.value = loginResponse.access.also { token ->
-                    TokenManager.saveToken(context, token)
-                }
+                response.body()?.let { loginResponse ->
+                    _token.value = loginResponse.access.also {
+                        TokenManager.saveToken(context, it)
+                    }
 
-                val userResponse = getApiService().getUserMe()
-                if (userResponse.isSuccessful && userResponse.body() != null) {
-                    _currentUser.value = userResponse.body()
-                    _isLoggedIn.value = true
-                    fetchGroups()
-                    loginResponse.access
-                } else null
+                    val userResponse = apiService.getUserMe()
+                    if (userResponse.isSuccessful) {
+                        _currentUser.value = userResponse.body()
+                        _isLoggedIn.value = true
+                        fetchGroups()
+                        loginResponse.access
+                    } else null
+                } ?: null
             } else null
         } catch (e: Exception) {
             Log.e("Login", "Error: ${e.localizedMessage}")
@@ -69,7 +66,6 @@ class TripTalesViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    // Logout
     fun logout() {
         _isLoggedIn.value = false
         _currentUser.value = null
@@ -77,9 +73,33 @@ class TripTalesViewModel(application: Application) : AndroidViewModel(applicatio
         _selectedTrip.value = null
         _trips.value = emptyList()
         _postResult.value = null
+        _posts.value = emptyList()
+        _members.value = emptyList()
     }
 
-    // Gestione gite
+    suspend fun register(username: String, email: String, password: String): Boolean {
+        return try {
+            val response = ApiClient.create().register(RegisterRequest(username, email, password))
+            if (response.isSuccessful) {
+                response.body()?.let { loginResponse ->
+                    _token.value = loginResponse.access
+                    apiService.getUserMe().let { userResponse ->
+                        if (userResponse.isSuccessful) {
+                            _currentUser.value = userResponse.body()
+                            _isLoggedIn.value = true
+                            fetchGroups()
+                            true
+                        } else false
+                    }
+                } ?: false
+            } else false
+        } catch (e: Exception) {
+            Log.e("Register", "Error: ${e.localizedMessage}")
+            false
+        }
+    }
+
+    // Gestione gruppi
     fun fetchGroups() {
         viewModelScope.launch {
             try {
@@ -88,35 +108,38 @@ class TripTalesViewModel(application: Application) : AndroidViewModel(applicatio
                     return@launch
                 }
 
-                ApiClient.create(token).getMyGroups().let { response ->
-                    if (response.isSuccessful) {
-                        _trips.value = response.body() ?: emptyList()
-                    }
+                val response = ApiClient.create(token).getMyGroups()
+                if (response.isSuccessful) {
+                    _trips.value = response.body() ?: emptyList()
                 }
             } catch (e: Exception) {
-                Log.e("FetchGroups", "Errore: ${e.localizedMessage}")
+                Log.e("FetchGroups", "Error: ${e.localizedMessage}")
             }
         }
     }
 
     suspend fun createTrip(name: String, description: String): Boolean {
         return try {
-            val response = getApiService().createGroup(CreateTripRequest(name, description))
+            val response = apiService.createGroup(CreateTripRequest(name, description))
             if (response.isSuccessful) {
                 fetchGroups()
                 true
             } else {
-                Log.e("CreateTrip", "Errore ${response.code()}")
+                Log.e("CreateTrip", "Error: ${response.code()}")
                 false
             }
         } catch (e: Exception) {
-            Log.e("CreateTrip", "Errore: ${e.localizedMessage}")
+            Log.e("CreateTrip", "Error: ${e.localizedMessage}")
             false
         }
     }
 
     fun selectTrip(trip: Trip) {
         _selectedTrip.value = trip
+        trip.id?.let {
+            fetchPostsForGroup(it)
+            fetchGroupMembers(it)
+        }
     }
 
     // Gestione post
@@ -129,37 +152,78 @@ class TripTalesViewModel(application: Application) : AndroidViewModel(applicatio
     ): Boolean {
         return try {
             when (val result = postRepository.addPost(
-                title = title,
-                content = content,
-                latitude = latitude,
-                longitude = longitude,
-                groupId = groupId
+                title, content, latitude, longitude, groupId
             )) {
                 is PostResult.Success -> {
-                    delay(100) // Piccolo delay per evitare broken pipe
+                    delay(100)
+                    fetchPostsForGroup(groupId)
                     true
                 }
                 is PostResult.Error -> {
-                    Log.e("Network", "Error: ${result.message}")
+                    Log.e("AddPost", result.message)
                     false
                 }
-                PostResult.Loading -> false // Non dovrebbe mai arrivare qui
+                else -> false
             }
         } catch (e: SocketException) {
-            Log.e("Network", "Connection closed prematurely: ${e.message}")
-            true // Considera comunque successo se il server ha risposto 201
+            Log.e("AddPost", "Socket error: ${e.message}")
+            true
         } catch (e: Exception) {
-            Log.e("Network", "Error: ${e.message}")
+            Log.e("AddPost", "Error: ${e.message}")
             false
         }
     }
+
+    fun fetchPostsForGroup(groupId: Int) {
+        viewModelScope.launch {
+            try {
+                val token = TokenManager.getToken(context)
+                if (token == null) {
+                    Log.e("FetchPosts", "Token mancante")
+                    return@launch
+                }
+                val apiWithToken = ApiClient.create(token)
+                val response = apiWithToken.getPostsForGroup(groupId)
+                if (response.isSuccessful) {
+                    val postsList = response.body() ?: emptyList()
+                    Log.d("FetchPosts", "Posts ricevuti: ${postsList.size}")
+                    _posts.value = postsList
+                } else {
+                    Log.e("FetchPosts", "Errore risposta: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("FetchPosts", "Error: ${e.localizedMessage}")
+            }
+        }
+    }
+
+
+    fun fetchGroupMembers(groupId: Int) {
+        viewModelScope.launch {
+            try {
+                val token = TokenManager.getToken(context)
+                if (token == null) {
+                    Log.e("FetchMembers", "Token mancante")
+                    return@launch
+                }
+                val apiWithToken = ApiClient.create(token)
+                val response = apiWithToken.getGroupMembers(groupId)
+                if (response.isSuccessful) {
+                    _members.value = response.body() ?: emptyList()
+                }
+            } catch (e: Exception) {
+                Log.e("FetchMembers", "Error: ${e.localizedMessage}")
+            }
+        }
+    }
+
 
     // Gestione commenti
     fun addComment(postId: String, content: String) {
         viewModelScope.launch {
             _currentUser.value?.let { user ->
                 try {
-                    val response = getApiService().addComment(
+                    val response = apiService.addComment(
                         Comment(
                             id = 0,
                             userId = user.id,
@@ -168,54 +232,29 @@ class TripTalesViewModel(application: Application) : AndroidViewModel(applicatio
                             timestamp = System.currentTimeMillis()
                         )
                     )
-                    if (response.isSuccessful) fetchGroups()
+                    if (response.isSuccessful) {
+                        _selectedTrip.value?.id?.let { fetchPostsForGroup(it) }
+                    }
                 } catch (e: Exception) {
-                    Log.e("AddComment", "Errore: ${e.localizedMessage}")
+                    Log.e("AddComment", "Error: ${e.localizedMessage}")
                 }
             }
         }
     }
 
-    // Registrazione
-    suspend fun register(username: String, email: String, password: String): Boolean {
-        return try {
-            ApiClient.create().register(RegisterRequest(username, email, password)).let { response ->
-                if (response.isSuccessful) {
-                    response.body()?.let { loginResponse ->
-                        _token.value = loginResponse.access
-                        getApiService().getUserMe().let { userResponse ->
-                            if (userResponse.isSuccessful && userResponse.body() != null) {
-                                _currentUser.value = userResponse.body()
-                                fetchGroups()
-                                _isLoggedIn.value = true
-                                true
-                            } else false
-                        }
-                    } ?: false
-                } else false
-            }
-        } catch (e: Exception) {
-            Log.e("Register", "Errore: ${e.localizedMessage}")
-            false
-        }
-    }
-
-    // Upload immagini (da implementare)
-    suspend fun uploadImage(uri: Uri) {
-        // TODO: Implementa l'upload
-    }
-
-    // Reset del risultato del post
+    // Altri metodi
     fun resetPostResult() {
         _postResult.value = null
     }
+
+    suspend fun uploadImage(uri: Uri) {
+        // TODO: Implement
+    }
 }
 
-// Classi di supporto
 sealed class PostResult {
-
-    data object Loading : PostResult()
-    data object Success : PostResult()
+    object Loading : PostResult()
+    object Success : PostResult()
     data class Error(val message: String) : PostResult()
 }
 
@@ -231,20 +270,24 @@ class PostRepository(
         groupId: Int
     ): PostResult {
         return try {
-            val token = TokenManager.getToken(context) ?: return PostResult.Error("Token non valido")
+            val token = TokenManager.getToken(context) ?:
+            return PostResult.Error("Token non valido")
 
-            ApiClient.create(token).addPost(
+            val response = ApiClient.create(token).addPost(
                 title = title.toRequestBody("text/plain".toMediaTypeOrNull()),
                 content = content.toRequestBody("text/plain".toMediaTypeOrNull()),
-                latitude = latitude?.toString().orEmpty().toRequestBody("text/plain".toMediaTypeOrNull()),
-                longitude = longitude?.toString().orEmpty().toRequestBody("text/plain".toMediaTypeOrNull()),
-                groupId = groupId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
-            ).let { response ->
-                if (response.isSuccessful) {
-                    PostResult.Success
-                } else {
-                    PostResult.Error(response.errorBody()?.string() ?: "Errore sconosciuto")
-                }
+                latitude = latitude?.toString().orEmpty()
+                    .toRequestBody("text/plain".toMediaTypeOrNull()),
+                longitude = longitude?.toString().orEmpty()
+                    .toRequestBody("text/plain".toMediaTypeOrNull()),
+                groupId = groupId.toString()
+                    .toRequestBody("text/plain".toMediaTypeOrNull())
+            )
+
+            if (response.isSuccessful) {
+                PostResult.Success
+            } else {
+                PostResult.Error(response.errorBody()?.string() ?: "Errore sconosciuto")
             }
         } catch (e: Exception) {
             PostResult.Error("Errore di rete: ${e.localizedMessage}")

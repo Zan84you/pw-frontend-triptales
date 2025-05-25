@@ -5,24 +5,25 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
 object TokenManager {
-    private const val PREF_NAME = "triptales_prefs"
+    private const val PREFS_NAME = "token_prefs"
     private const val TOKEN_KEY = "auth_token"
 
     fun saveToken(context: Context, token: String) {
-        val sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        sharedPreferences.edit().putString(TOKEN_KEY, token).apply()
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(TOKEN_KEY, token).apply()
     }
 
     fun getToken(context: Context): String? {
-        val sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        return sharedPreferences.getString(TOKEN_KEY, null)
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(TOKEN_KEY, null)
     }
 
     fun clearToken(context: Context) {
-        val sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        sharedPreferences.edit().remove(TOKEN_KEY).apply()
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().remove(TOKEN_KEY).apply()
     }
 }
+
 
 data class LoginRequest(
     val username: String,
@@ -53,8 +54,8 @@ data class Trip(
     val name: String,
     val description: String,
     val creatorId: String,
-    val members: List<String>? = emptyList(),
-    val posts: List<Post>? = emptyList()
+    val memberIds: List<String> = emptyList(),  // Solo ID dei membri
+    val postIds: List<String> = emptyList()     // Solo ID dei post
 )
 
 data class PostRequest(

@@ -42,8 +42,11 @@ interface ApiService {
         @Part("group") groupId: RequestBody,
     ): Response<Post>
 
-    //@POST("posts/")
-    //suspend fun addPost(@Body post: PostRequest): Response<Post>
+    @GET("groups/{group_id}/posts/")
+    suspend fun getPostsForGroup(@Path("group_id") groupId: Int): Response<List<Post>>
+
+    @GET("groups/{group_id}/members/")
+    suspend fun getGroupMembers(@Path("group_id") groupId: Int): Response<List<User>>
 
     // --- Commenti ---
     @GET("comments/")
