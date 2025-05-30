@@ -1,8 +1,6 @@
 package com.example.frontend_triptales
 
 import android.content.Context
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody
 
 object TokenManager {
     private const val PREFS_NAME = "token_prefs"

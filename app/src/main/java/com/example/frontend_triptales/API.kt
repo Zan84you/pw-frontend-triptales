@@ -2,7 +2,6 @@ package com.example.frontend_triptales
 
 import android.util.Log
 import okhttp3.Interceptor
-import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import okhttp3.logging.HttpLoggingInterceptor
@@ -84,7 +83,7 @@ class AuthInterceptor(private val token: String) : Interceptor {
 }
 
 object ApiClient {
-    private const val BASE_URL = "http://192.168.1.12:8000/api/"
+    private const val BASE_URL = "http://costaalberto.duckdns.org:8019/api/"
 
     fun create(token: String? = null): ApiService{
         val logging = HttpLoggingInterceptor().apply {
